@@ -259,8 +259,8 @@ void setup() {
 
   layerStepper.disable();
   shaftStepper.disable();
-  layerStepper.reverse(!STEPPER_Z_REVERSE);
-  shaftStepper.reverse(!STEPPER_A_REVERSE);
+  layerStepper.reverse(!STEPPER_A_REVERSE);
+  shaftStepper.reverse(!STEPPER_Z_REVERSE);
   planner.addStepper(0, shaftStepper);
   planner.addStepper(1, layerStepper);
 
@@ -547,7 +547,8 @@ void AutoWinding(const Winding &w, bool &direction)  // Подпрограмма
   planner.setAcceleration(STEPPER_Z_STEPS_COUNT * settings.acceleration / 60L);
   planner.setMaxSpeed(constrain(STEPPER_Z_STEPS_COUNT * w.speed / 60L, 1, PLANNER_SPEED_LIMIT));
 
-  int32_t dShaft = STEPPER_Z_STEPS_COUNT * w.turns;
+  const int8_t shaftDir = w.dir ? 1 : -1;
+  int32_t dShaft = STEPPER_Z_STEPS_COUNT * w.turns * shaftDir;
   int32_t dLayer = STEPPER_A_STEPS_COUNT * w.turns * w.step / int32_t(THREAD_PITCH) * (direction ? 1 : -1);
   int32_t p[] = { dShaft, dLayer };
 
