@@ -33,17 +33,21 @@ struct Settings {
   int shaftPos = 0;
   int layerPos = 0;
   int16_t acceleration = 30;
-  int8_t currentTransformer = 0;
+  int8_t currentTransformer = 1;
 };
 
 void Load(Settings &o, int &p) {
   EEPROM_load(p, o.stopPerLayer);
+  EEPROM_load(p, o.shaftStep);
+  EEPROM_load(p, o.layerStep);
   EEPROM_load(p, o.acceleration);  
   EEPROM_load(p, o.currentTransformer);
 }
 
 void Save(const Settings &o, int &p) {
   EEPROM_save(p, o.stopPerLayer);
+  EEPROM_save(p, o.shaftStep);
+  EEPROM_save(p, o.layerStep);
   EEPROM_save(p, o.acceleration);
   EEPROM_save(p, o.currentTransformer);
 }
