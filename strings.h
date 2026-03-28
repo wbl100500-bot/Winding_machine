@@ -1,6 +1,6 @@
 #pragma once
 
-// ›ÚÓÚ Ù‡ÈÎ ÒÓı‡ÌÂÌ ‚ ÍÓ‰ËÓ‚ÍÂ Windows 1251
+// √ù√≤√Æ√≤ √¥√†√©√´ √±√Æ√µ√∞√†√≠√•√≠ √¢ √™√Æ√§√®√∞√Æ√¢√™√• Windows 1251
 // This file is saved in Windows 1251 encoding
 
 #define EN 1
@@ -22,40 +22,42 @@ const char PROGMEM MENU_FORMAT_17[] = "%+04d";
 
 #if LANGUAGE == RU
 
-const char STRING_ON[] = "¬ À ";
-const char STRING_OFF[] = "¬€ À";
+const char STRING_ON[] = "√Ç√ä√ã ";
+const char STRING_OFF[] = "√Ç√õ√ä√ã";
 
-const char PROGMEM STRING_1[] = "Õ¿ÃŒ“ ¿ Œ ŒÕ◊≈Õ¿";
-const char PROGMEM STRING_2[] = "Õ¿∆Ã»“≈ ›Õ Œƒ≈–";
-const char PROGMEM STRING_3[] = "Œ¡ÃŒ“ ¿ %d —“¿–“";
+const char PROGMEM MENU_UWOLD[] = ":";
+const char PROGMEM MENU_UWOLD[] = "Old turns:";
+const char PROGMEM STRING_1[] = "√ç√Ä√å√é√í√ä√Ä √é√ä√é√ç√ó√Ö√ç√Ä";
+const char PROGMEM STRING_2[] = "√ç√Ä√Ü√å√à√í√Ö √ù√ç√ä√é√Ñ√Ö√ê";
+const char PROGMEM STRING_3[] = "√é√Å√å√é√í√ä√Ä %d √ë√í√Ä√ê√í";
 
-const char PROGMEM MENU_01[] = "¿¬“ŒÕ¿ÃŒ“ ¿";
-const char PROGMEM MENU_02[] = " ŒÕ‘»√";
-const char PROGMEM MENU_04[] = "œŒ«»÷»»";
-const char PROGMEM MENU_05[] = "Õ¿—“–Œ… »";
-const char PROGMEM MENU_06[] = "Œ¡ÃŒ“ ¿ 1";
-const char PROGMEM MENU_07[] = "Œ¡ÃŒ“ ¿ 2";
-const char PROGMEM MENU_08[] = "Œ¡ÃŒ“ ¿ 3";
-const char PROGMEM MENU_09[] = "Õ¿«¿ƒ";  
-const char PROGMEM MENU_10[] = "¬»“ Œ¬:";
-const char PROGMEM MENU_11[] = "ÿ¿√:";
+const char PROGMEM MENU_01[] = "√Ä√Ç√í√é√ç√Ä√å√é√í√ä√Ä";
+const char PROGMEM MENU_02[] = "√ä√é√ç√î√à√É";
+const char PROGMEM MENU_04[] = "√è√é√á√à√ñ√à√à";
+const char PROGMEM MENU_05[] = "√ç√Ä√ë√í√ê√é√â√ä√à";
+const char PROGMEM MENU_06[] = "√é√Å√å√é√í√ä√Ä 1";
+const char PROGMEM MENU_07[] = "√é√Å√å√é√í√ä√Ä 2";
+const char PROGMEM MENU_08[] = "√é√Å√å√é√í√ä√Ä 3";
+const char PROGMEM MENU_09[] = "√ç√Ä√á√Ä√Ñ";  
+const char PROGMEM MENU_10[] = "√Ç√à√í√ä√é√Ç:";
+const char PROGMEM MENU_11[] = "√ò√Ä√É:";
 const char PROGMEM MENU_12[] = "RPM:";
-const char PROGMEM MENU_13[] = "—ÀŒ≈¬:";
-const char PROGMEM MENU_14[] = "Õ¿œ–¿¬À.";
-const char PROGMEM MENU_15[] = "—“¿–“";
-const char PROGMEM MENU_17[] = " ¿“”ÿ ¿:";
-const char PROGMEM MENU_18[] = "ÿ¿√:";
-const char PROGMEM MENU_19[] = "œŒƒ¿◊¿:";
-const char PROGMEM MENU_22[] = "—ÀŒ…—“Œœ";
-const char PROGMEM MENU_23[] = "”— Œ–≈Õ.";
-const char PROGMEM MENU_UNWIND[] = "–¿«ÃŒ“ ¿";
-const char PROGMEM MENU_UWTURNS[] = "¬»“ Œ¬:";
+const char PROGMEM MENU_13[] = "√ë√ã√é√Ö√Ç:";
+const char PROGMEM MENU_14[] = "√ç√Ä√è√ê√Ä√Ç√ã.";
+const char PROGMEM MENU_15[] = "√ë√í√Ä√ê√í";
+const char PROGMEM MENU_17[] = "√ä√Ä√í√ì√ò√ä√Ä:";
+const char PROGMEM MENU_18[] = "√ò√Ä√É:";
+const char PROGMEM MENU_19[] = "√è√é√Ñ√Ä√ó√Ä:";
+const char PROGMEM MENU_22[] = "√ë√ã√é√â√ë√í√é√è";
+const char PROGMEM MENU_23[] = "√ì√ë√ä√é√ê√Ö√ç.";
+const char PROGMEM MENU_UNWIND[] = "√ê√Ä√á√å√é√í√ä√Ä";
+const char PROGMEM MENU_UWTURNS[] = "√Ç√à√í√ä√é√Ç:";
 
-const char PROGMEM PLANNER_STATUS_0[] = "œ¿”«¿";
-const char PROGMEM PLANNER_STATUS_1[] = "Õ¿ÃŒ“ ¿";
-const char PROGMEM PLANNER_STATUS_2[] = "Œ—“¿ÕŒ¬ ¿";
+const char PROGMEM PLANNER_STATUS_0[] = "√è√Ä√ì√á√Ä";
+const char PROGMEM PLANNER_STATUS_1[] = "√ç√Ä√å√é√í√ä√Ä";
+const char PROGMEM PLANNER_STATUS_2[] = "√é√ë√í√Ä√ç√é√Ç√ä√Ä";
 const char PROGMEM PLANNER_STATUS_3[] = "";
-const char PROGMEM PLANNER_STATUS_4[] = "“Œ–ÃŒ∆≈Õ»≈";
+const char PROGMEM PLANNER_STATUS_4[] = "√í√é√ê√å√é√Ü√Ö√ç√à√Ö";
 
 #else
 
