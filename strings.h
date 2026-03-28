@@ -62,6 +62,7 @@ const char PROGMEM PLANNER_STATUS_4[] = "ÒÎÐÌÎÆÅÍÈÅ";
 
 const char STRING_ON[] = "ON ";
 const char STRING_OFF[] = "OFF";
+const char PROGMEM MENU_UWOLD[] = "Old turns:";
 
 const char PROGMEM STRING_1[] = "AUTOWINDING DONE";
 const char PROGMEM STRING_2[] = "PRESS CONTINUE";
