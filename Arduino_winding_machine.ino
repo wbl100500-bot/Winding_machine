@@ -618,10 +618,14 @@ void AutoWinding(const Winding &w, bool &direction)  // Подпрограмма
   shaftStepper.disable();
 }
 
+int32_t LoadUnwindTurns();
+
 void LoadUnwindParams() {
   int p = EEPROM_UNWIND_ADDR;
   byte v = 0; EEPROM_load(p, v);
   if (v == EEPROM_UNWIND_VERSION) Load(unwindParams, p);
+  int32_t turns = LoadUnwindTurns();
+  unwindParams.turns = constrain(turns, 1L, 999L);
 }
 void SaveUnwindParams() {
   int p = EEPROM_UNWIND_ADDR;
@@ -631,6 +635,12 @@ void SaveUnwindParams() {
 void SaveUnwindTurns(int32_t turns) {
   int p = EEPROM_UNWIND_ADDR + 1 + (int)sizeof(UnwindParams);
   EEPROM_save(p, turns);
+}
+int32_t LoadUnwindTurns() {
+  int p = EEPROM_UNWIND_ADDR + 1 + (int)sizeof(UnwindParams);
+  int32_t turns = 0;
+  EEPROM_load(p, turns);
+  return max<int32_t>(0, turns);
 }
 void DrawUnwindScreen(int32_t turns, int16_t rpm, int16_t stepVal, bool running) {
   char buf[21];
@@ -665,11 +675,12 @@ bool UnwindAskFinish() {
 }
 
 void UnwindWinding(const UnwindParams &w) {
-  noInterrupts(); unwindPos = 0; interrupts();
+  int32_t restoredTurns = LoadUnwindTurns();
+  noInterrupts(); unwindPos = restoredTurns * UNWIND_COUNTS_PER_REV; interrupts();
   int16_t curSpeed = constrain(w.speed, 30, UNWIND_MAX_RPM);
   speedMult = (w.speed > 0) ? (double)w.speed / (double)curSpeed : 1.0;
   lcd.clear();
-  DrawUnwindScreen(0, curSpeed, w.step, false);
+  DrawUnwindScreen(restoredTurns, curSpeed, w.step, false);
   pedal.tick();
   bool run = pedal.pressing();
   shaftStepper.enable(); layerStepper.enable();
@@ -683,8 +694,15 @@ void UnwindWinding(const UnwindParams &w) {
   int32_t dShaft = (int32_t)STEPPER_Z_STEPS_COUNT * w.turns;
   int32_t dLayer = (int32_t)STEPPER_A_STEPS_COUNT * w.turns * w.step / (int32_t)THREAD_PITCH;
   planner.reset(); initTimer();
-  int32_t lastTurns = 0;
+  int32_t lastTurns = restoredTurns;
+  int32_t savedTurns = restoredTurns;
   bool done = false;
+  bool needRedraw = true;
+  uint32_t lastSaveMs = millis();
+  uint32_t lastDrawMs = 0;
+  int16_t shownSpeed = -1;
+  int32_t shownTurns = -1;
+  bool shownRun = !run;
 
   while (!done) {
     if (run && !planner.getStatus()) {
@@ -703,11 +721,16 @@ void UnwindWinding(const UnwindParams &w) {
         noInterrupts(); planner.resume(); interrupts();
         if (planner.getStatus()) { startTimer(); setPeriod(planner.getPeriod()*speedMult); }
       } else { noInterrupts(); planner.stop(); interrupts(); }
+      SaveUnwindTurns(lastTurns);  // фиксируем прогресс при паузе
+      savedTurns = lastTurns;
+      lastSaveMs = millis();
+      needRedraw = true;
     }
 
     if (ManualEnc::turn()) {
       curSpeed = constrain(curSpeed + ManualEnc::dir()*10, 30, UNWIND_MAX_RPM);
       speedMult = (double)w.speed / (double)curSpeed;
+      needRedraw = true;
     }
 
     if (encoder.click()) {
@@ -726,6 +749,7 @@ void UnwindWinding(const UnwindParams &w) {
           if (planner.getStatus()) { startTimer(); setPeriod(planner.getPeriod()*speedMult); }
         }
         DrawUnwindScreen(lastTurns, curSpeed, w.step, run);
+        needRedraw = true;
       }
     }
 
@@ -734,7 +758,24 @@ void UnwindWinding(const UnwindParams &w) {
       tmrU = millis();
       int32_t pos; noInterrupts(); pos=unwindPos; interrupts();
       lastTurns = abs(pos) / UNWIND_COUNTS_PER_REV;
+      if (lastTurns != shownTurns || curSpeed != shownSpeed || run != shownRun) needRedraw = true;
+    }
+
+    // Периодически сохраняем прогресс в EEPROM, чтобы восстановиться после сброса.
+    if ((millis() - lastSaveMs >= 3000) && (lastTurns != savedTurns)) {
+      SaveUnwindTurns(lastTurns);
+      savedTurns = lastTurns;
+      lastSaveMs = millis();
+    }
+
+    // Меньше обращений к LCD -> стабильнее картинка на шумной линии.
+    if (needRedraw || (millis() - lastDrawMs >= 1000)) {
       DrawUnwindScreen(lastTurns, curSpeed, w.step, run);
+      shownTurns = lastTurns;
+      shownSpeed = curSpeed;
+      shownRun = run;
+      lastDrawMs = millis();
+      needRedraw = false;
     }
   }
 
