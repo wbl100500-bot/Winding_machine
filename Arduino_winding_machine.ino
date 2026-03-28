@@ -704,9 +704,9 @@ void UnwindWinding(const UnwindParams &w) {
   planner.setMaxSpeed(constrain(
     STEPPER_Z_STEPS_COUNT*(long)w.speed/60L, 1L,
     (long)STEPPER_Z_STEPS_COUNT*UNWIND_MAX_RPM/60L));
-  shaftStepper.reverse(STEPPER_Z_REVERSE ^ (!w.dir));
+  shaftStepper.reverse(STEPPER_Z_REVERSE ^ w.dir);
   layerStepper.reverse(STEPPER_A_REVERSE);
-  bool direction = true;
+  bool direction = false;
   int32_t dShaft = (int32_t)STEPPER_Z_STEPS_COUNT * w.turns;
   int32_t dLayer = (int32_t)STEPPER_A_STEPS_COUNT * w.turns * w.step / (int32_t)THREAD_PITCH;
   planner.reset(); initTimer();
