@@ -158,6 +158,7 @@ ManualBtn<BUTTON_STOP> pedal;
 
 Winding params[WINDING_COUNT];
 UnwindParams unwindParams;
+int16_t unwindStoredTurns = 0;
 
 int8_t currentWinding = 0;
 
@@ -169,7 +170,7 @@ enum menu_states {
   TurnsSet,LaySet,StepSet,SpeedSet,Direction,Start,Cancel,
   ShaftPos,ShaftStepMul,LayerPos,LayerStepMul,PosCancel,
   miSettingsStopPerLevel,AccelSet,miSettingsBack,
-  UnwindSpeedSet,UnwindStepSet,UnwindTurnsSet,UnwindDir,UnwindStart,UnwindBack
+  UnwindSpeedSet,UnwindStepSet,UnwindTurnsSet,UnwindOldTurnsSet,UnwindDir,UnwindStart,UnwindBack
 };  // Нумерованный список строк экрана
 
 const char *boolSet[] = { STRING_OFF, STRING_ON };
@@ -205,9 +206,10 @@ MenuItem *menuItems[] = {
   new IntMenuItem(3, 0, MENU_12, MENU_FORMAT_10, NULL, 30, UNWIND_MAX_RPM, 10),
   new FloatMenuItem(3, 1, MENU_11, MENU_FORMAT_11, NULL, 5, 9995, 5),
   new IntMenuItem(3, 2, MENU_UWTURNS, MENU_FORMAT_10, NULL, 1, 999),
-  new BoolMenuItem(3, 3, MENU_14, NULL, dirSet),
-  new MenuItem(3, 4, MENU_15),
-  new MenuItem(3, 5, MENU_09),
+  new IntMenuItem(3, 3, MENU_UWOLD, MENU_FORMAT_10, NULL, 0, 32767, 1),
+  new BoolMenuItem(3, 4, MENU_14, NULL, dirSet),
+  new MenuItem(3, 5, MENU_15),
+  new MenuItem(3, 6, MENU_09),
 };
 
 byte up[8] = { 0b00100, 0b01110, 0b11111, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000 };    // Создаем свой символ ⯅ для LCD
@@ -361,16 +363,19 @@ void loop() {
         ((IntMenuItem *)menu[UnwindSpeedSet])->value   = &unwindParams.speed;
         ((FloatMenuItem *)menu[UnwindStepSet])->value  = &unwindParams.step;
         ((IntMenuItem *)menu[UnwindTurnsSet])->value   = &unwindParams.turns;
+        ((IntMenuItem *)menu[UnwindOldTurnsSet])->value = &unwindStoredTurns;
         ((BoolMenuItem *)menu[UnwindDir])->value       = &unwindParams.dir;
         break;
       case UnwindSpeedSet:
       case UnwindStepSet:
       case UnwindTurnsSet:
+      case UnwindOldTurnsSet:
         ValueEdit(); break;
       case UnwindDir:
         menu.IncCurrent(1, true); break;
       case UnwindStart:
         SaveUnwindParams();
+        SaveUnwindTurns(unwindStoredTurns);
         UnwindWinding(unwindParams);
         menu.index = miUnwinding;
         break;
@@ -625,7 +630,7 @@ void LoadUnwindParams() {
   byte v = 0; EEPROM_load(p, v);
   if (v == EEPROM_UNWIND_VERSION) Load(unwindParams, p);
   int32_t turns = LoadUnwindTurns();
-  unwindParams.turns = constrain(turns, 1L, 999L);
+  unwindStoredTurns = constrain(turns, 0L, 32767L);
 }
 void SaveUnwindParams() {
   int p = EEPROM_UNWIND_ADDR;
@@ -653,30 +658,39 @@ void DrawUnwindScreen(int32_t turns, int16_t rpm, int16_t stepVal, bool running)
     lcd.printAt(0, 3, running ? "RUN   [BTN]=DIALOG  " : "PAUSE [BTN]=DIALOG  ");
 }
 
-bool UnwindAskFinish() {
+enum UnwindPauseAction {
+  UnwindPauseStop = 0,
+  UnwindPauseContinue = 1,
+  UnwindPauseMod = 2
+};
+
+UnwindPauseAction UnwindAskAction() {
   // Ждём отпускания кнопки — чтобы клик открытия не засчитался как выбор
   delay(30);
   while (digitalRead(ENCODER_SW) == LOW) { delay(5); }
   delay(30);
 
-  bool fin = false;
-  lcd.printAt(0, 3, " STOP  >CONTINUE    ");
+  uint8_t sel = UnwindPauseContinue;
+  lcd.printAt(0, 3, " STOP  >CONT   MOD  ");
 
   while (true) {
     ManualEnc::tick();
     encoder.tick();
     if (ManualEnc::turn()) {
-      fin = !fin;
-      lcd.printAt(0, 3, fin ? ">STOP   CONTINUE    " : " STOP  >CONTINUE    ");
+      sel = (sel + 3 + ManualEnc::dir()) % 3;
+      if (sel == UnwindPauseStop) lcd.printAt(0, 3, ">STOP   CONT   MOD  ");
+      if (sel == UnwindPauseContinue) lcd.printAt(0, 3, " STOP  >CONT   MOD  ");
+      if (sel == UnwindPauseMod) lcd.printAt(0, 3, " STOP   CONT  >MOD  ");
     }
-    if (encoder.click()) return fin;
+    if (encoder.click()) return (UnwindPauseAction)sel;
     delay(5);
   }
 }
 
 void UnwindWinding(const UnwindParams &w) {
   int32_t restoredTurns = LoadUnwindTurns();
-  noInterrupts(); unwindPos = restoredTurns * UNWIND_COUNTS_PER_REV; interrupts();
+  int32_t basePos = restoredTurns * UNWIND_COUNTS_PER_REV;
+  noInterrupts(); unwindPos = basePos; interrupts();
   int16_t curSpeed = constrain(w.speed, 30, UNWIND_MAX_RPM);
   speedMult = (w.speed > 0) ? (double)w.speed / (double)curSpeed : 1.0;
   lcd.clear();
@@ -737,13 +751,14 @@ void UnwindWinding(const UnwindParams &w) {
       noInterrupts(); planner.stop(); interrupts();
       bool wasRun = run; run = false;
       int32_t pos; noInterrupts(); pos=unwindPos; interrupts();
-      lastTurns = abs(pos) / UNWIND_COUNTS_PER_REV;
+      lastTurns = restoredTurns + abs(pos - basePos) / UNWIND_COUNTS_PER_REV;
       DrawUnwindScreen(lastTurns, curSpeed, w.step, false);
 
-      if (UnwindAskFinish()) {
+      UnwindPauseAction act = UnwindAskAction();
+      if (act == UnwindPauseStop) {
         done = true;
       } else {
-        run = wasRun;
+        run = (act == UnwindPauseContinue) ? wasRun : false;
         if (run) {
           noInterrupts(); planner.resume(); interrupts();
           if (planner.getStatus()) { startTimer(); setPeriod(planner.getPeriod()*speedMult); }
@@ -757,7 +772,7 @@ void UnwindWinding(const UnwindParams &w) {
     if (millis()-tmrU >= 250) {
       tmrU = millis();
       int32_t pos; noInterrupts(); pos=unwindPos; interrupts();
-      lastTurns = abs(pos) / UNWIND_COUNTS_PER_REV;
+      lastTurns = restoredTurns + abs(pos - basePos) / UNWIND_COUNTS_PER_REV;
       if (lastTurns != shownTurns || curSpeed != shownSpeed || run != shownRun) needRedraw = true;
     }
 
@@ -783,7 +798,7 @@ void UnwindWinding(const UnwindParams &w) {
   shaftStepper.reverse(STEPPER_Z_REVERSE);
   layerStepper.disable(); shaftStepper.disable();
   int32_t pos; noInterrupts(); pos=unwindPos; interrupts();
-  lastTurns = abs(pos) / UNWIND_COUNTS_PER_REV;
+  lastTurns = restoredTurns + abs(pos - basePos) / UNWIND_COUNTS_PER_REV;
   SaveUnwindTurns(lastTurns);
   lcd.clear();
   lcd.printAt(0, 0, "RAZMOTKA DONE");
