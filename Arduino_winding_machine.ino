@@ -145,7 +145,7 @@ ManualBtn<BUTTON_STOP> pedal;
 #define STEPPER_Z_MANUAL_SPEED 360
 #define STEPPER_A_MANUAL_SPEED ((int)(360L * 1000 / THREAD_PITCH))
 
-#define EEPROM_SETTINGS_VERSION 2
+#define EEPROM_SETTINGS_VERSION 3
 #define EEPROM_WINDINGS_VERSION 2
 #define EEPROM_SETTINGS_ADDR 0x00
 #define EEPROM_WINDINGS_ADDR 0x10
@@ -783,20 +783,34 @@ void WaitButton() {
   } while (!encoder.click());
 }
 
+static uint8_t NormalizeStepMultiplier(uint8_t value) {
+  if (value <= 1) return 1;
+  if (value <= 10) return 10;
+  return 100;
+}
+
 
 
 void LoadSettings() {
+  settings = Settings();
   int p = EEPROM_SETTINGS_ADDR;
   byte v = 0;
   EEPROM_load(p, v);
-  if (v != EEPROM_SETTINGS_VERSION)
+  if (v != EEPROM_SETTINGS_VERSION) {
+    settings.currentTransformer = constrain(settings.currentTransformer, 1, TRANSFORMER_COUNT);
     return;
+  }
 
   Load(settings, p);
   settings.currentTransformer = constrain(settings.currentTransformer, 1, TRANSFORMER_COUNT);
+  settings.shaftStep = NormalizeStepMultiplier(settings.shaftStep);
+  settings.layerStep = NormalizeStepMultiplier(settings.layerStep);
 }
 
 void SaveSettings() {
+  settings.currentTransformer = constrain(settings.currentTransformer, 1, TRANSFORMER_COUNT);
+  settings.shaftStep = NormalizeStepMultiplier(settings.shaftStep);
+  settings.layerStep = NormalizeStepMultiplier(settings.layerStep);
   int p = EEPROM_SETTINGS_ADDR;
   byte v = EEPROM_SETTINGS_VERSION;
   EEPROM_save(p, v);
