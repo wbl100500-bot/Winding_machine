@@ -160,6 +160,12 @@ Winding params[WINDING_COUNT];
 UnwindParams unwindParams;
 int16_t unwindStoredTurns = 0;
 
+enum UnwindPauseAction : uint8_t {
+  UnwindPauseStop = 0,
+  UnwindPauseContinue = 1,
+  UnwindPauseMod = 2
+};
+
 int8_t currentWinding = 0;
 
 Settings settings;
@@ -658,13 +664,7 @@ void DrawUnwindScreen(int32_t turns, int16_t rpm, int16_t stepVal, bool running)
     lcd.printAt(0, 3, running ? "RUN   [BTN]=DIALOG  " : "PAUSE [BTN]=DIALOG  ");
 }
 
-enum UnwindPauseAction {
-  UnwindPauseStop = 0,
-  UnwindPauseContinue = 1,
-  UnwindPauseMod = 2
-};
-
-UnwindPauseAction UnwindAskAction() {
+uint8_t UnwindAskAction() {
   // Ждём отпускания кнопки — чтобы клик открытия не засчитался как выбор
   delay(30);
   while (digitalRead(ENCODER_SW) == LOW) { delay(5); }
@@ -682,7 +682,7 @@ UnwindPauseAction UnwindAskAction() {
       if (sel == UnwindPauseContinue) lcd.printAt(0, 3, " STOP  >CONT   MOD  ");
       if (sel == UnwindPauseMod) lcd.printAt(0, 3, " STOP   CONT  >MOD  ");
     }
-    if (encoder.click()) return (UnwindPauseAction)sel;
+    if (encoder.click()) return sel;
     delay(5);
   }
 }
@@ -754,7 +754,7 @@ void UnwindWinding(const UnwindParams &w) {
       lastTurns = restoredTurns + abs(pos - basePos) / UNWIND_COUNTS_PER_REV;
       DrawUnwindScreen(lastTurns, curSpeed, w.step, false);
 
-      UnwindPauseAction act = UnwindAskAction();
+      uint8_t act = UnwindAskAction();
       if (act == UnwindPauseStop) {
         done = true;
       } else {

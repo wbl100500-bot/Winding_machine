@@ -25,7 +25,6 @@ const char PROGMEM MENU_FORMAT_17[] = "%+04d";
 const char STRING_ON[] = "ÂÊË ";
 const char STRING_OFF[] = "ÂÛÊË";
 
-const char PROGMEM MENU_UWOLD[] = ":";
 const char PROGMEM MENU_UWOLD[] = "Old turns:";
 const char PROGMEM STRING_1[] = "ÍÀÌÎÒÊÀ ÎÊÎÍ×ÅÍÀ";
 const char PROGMEM STRING_2[] = "ÍÀÆÌÈÒÅ ÝÍÊÎÄÅÐ";
