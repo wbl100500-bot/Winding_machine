@@ -58,7 +58,10 @@
 #define KEYBOARD_RIGHT      171
 #define KEYBOARD_SELECT     350
 
-#define LANGUAGE            RU
+// Для LCD с 8 пользовательскими символами кириллица в большом меню 20x4
+// может «разваливаться» (одновременно на экране больше 8 уникальных глифов).
+// По умолчанию используем английский интерфейс, чтобы меню отображалось стабильно.
+#define LANGUAGE            EN
 //#define DEBUG
 #define TRANSFORMER_COUNT   3
 
