@@ -49,7 +49,7 @@ public:
   uint8_t nRows = 0;
 
   void begin(uint8_t cols, uint8_t rows) {
-    memset(_gen, 0, GEN_COUNT);
+    resetCharCache();
 
     nCols = cols;
     nRows = rows;
@@ -65,6 +65,10 @@ public:
   void clear() {
     _col = 0;
     _row = 0;
+    // Если LCD сбросился по питанию/помехе, кэш _gen уже не соответствует
+    // содержимому CGRAM дисплея. Сбрасываем кэш при clear(), чтобы
+    // пользовательские/кириллические символы были загружены заново.
+    resetCharCache();
     return LCD_CLASS::clear();
   }
 
@@ -137,6 +141,12 @@ public:
   }
 
 private:
+  void resetCharCache() {
+    memset(_gen, 0, GEN_COUNT);
+    byte initQuery[8] = { 8, 7, 6, 5, 4, 3, 2, 1 };
+    memcpy(_query, initQuery, sizeof(_query));
+  }
+
   byte _row = 0;
   byte _col = 0;
 
