@@ -475,25 +475,27 @@ double speedMult = 1;
 #define STEPPER_EN_A STEPPER_EN
 #endif
 volatile int32_t unwindPos = 0;
+#define UNWIND_COUNTS_PER_REV ((int32_t)UNWIND_PPR * 2L)
 #ifdef UNWIND_ENC_A
 // Только канал A на прерывании (пин 18 = INT5 на Mega).
 // Канал B читается внутри ISR только для определения направления.
 // ISR_B убран — при двух ISR на A и B они давали противоположные знаки и обнуляли счёт.
+// На CHANGE канала A получаем 2 импульса на период (x2), поэтому 1 оборот = UNWIND_PPR * 2.
 void unwindISR_A() {
   if (digitalRead(UNWIND_ENC_A) == digitalRead(UNWIND_ENC_B))
     unwindPos++;
   else
     unwindPos--;
 }
-void unwindISR_Z() { unwindPos = 0; }  // Z: сброс раз в оборот (пин 20 = INT3)
 #endif
 void setupUnwindEncoder() {
 #ifdef UNWIND_ENC_A
   pinMode(UNWIND_ENC_A, INPUT_PULLUP);
   pinMode(UNWIND_ENC_B, INPUT_PULLUP);
+  #ifdef UNWIND_ENC_Z
   pinMode(UNWIND_ENC_Z, INPUT_PULLUP);
+  #endif
   attachInterrupt(digitalPinToInterrupt(UNWIND_ENC_A), unwindISR_A, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(UNWIND_ENC_Z), unwindISR_Z, RISING);
 #endif
 }
 
@@ -712,7 +714,7 @@ void UnwindWinding(const UnwindParams &w) {
       noInterrupts(); planner.stop(); interrupts();
       bool wasRun = run; run = false;
       int32_t pos; noInterrupts(); pos=unwindPos; interrupts();
-      lastTurns = abs(pos)/(int32_t)(UNWIND_PPR*4UL);
+      lastTurns = abs(pos) / UNWIND_COUNTS_PER_REV;
       DrawUnwindScreen(lastTurns, curSpeed, w.step, false);
 
       if (UnwindAskFinish()) {
@@ -731,7 +733,7 @@ void UnwindWinding(const UnwindParams &w) {
     if (millis()-tmrU >= 250) {
       tmrU = millis();
       int32_t pos; noInterrupts(); pos=unwindPos; interrupts();
-      lastTurns = abs(pos)/(int32_t)(UNWIND_PPR*4UL);
+      lastTurns = abs(pos) / UNWIND_COUNTS_PER_REV;
       DrawUnwindScreen(lastTurns, curSpeed, w.step, run);
     }
   }
@@ -740,7 +742,7 @@ void UnwindWinding(const UnwindParams &w) {
   shaftStepper.reverse(STEPPER_Z_REVERSE);
   layerStepper.disable(); shaftStepper.disable();
   int32_t pos; noInterrupts(); pos=unwindPos; interrupts();
-  lastTurns = abs(pos)/(int32_t)(UNWIND_PPR*4UL);
+  lastTurns = abs(pos) / UNWIND_COUNTS_PER_REV;
   SaveUnwindTurns(lastTurns);
   lcd.clear();
   lcd.printAt(0, 0, "RAZMOTKA DONE");
