@@ -661,8 +661,8 @@ void DrawUnwindScreen(int32_t turns, int16_t rpm, int16_t stepVal, bool running)
   snprintf(buf, 21, "S:%d.%03dmm          ", stepVal/1000, abs(stepVal%1000));
   lcd.printAt(0, 1, buf);
   if (lcd.nRows > 2) lcd.printAt(0, 2, "                    ");
-  if (lcd.nRows > 3)
-    lcd.printAt(0, 3, running ? "RUN   [BTN]=DIALOG  " : "PAUSE [BTN]=DIALOG  ");
+  byte statusRow = (lcd.nRows > 3) ? 3 : (lcd.nRows - 1);
+  lcd.printAt(0, statusRow, running ? "RUN   [BTN]=DIALOG  " : "PAUSE [BTN]=DIALOG  ");
 }
 
 uint8_t UnwindAskAction() {
@@ -672,16 +672,17 @@ uint8_t UnwindAskAction() {
   delay(30);
 
   uint8_t sel = UnwindPauseContinue;
-  lcd.printAt(0, 3, " STOP  >CONT   MOD  ");
+  byte statusRow = (lcd.nRows > 3) ? 3 : (lcd.nRows - 1);
+  lcd.printAt(0, statusRow, " STOP  >CONT   MOD  ");
 
   while (true) {
     ManualEnc::tick();
     encoder.tick();
     if (ManualEnc::turn()) {
       sel = (sel + 3 + ManualEnc::dir()) % 3;
-      if (sel == UnwindPauseStop) lcd.printAt(0, 3, ">STOP   CONT   MOD  ");
-      if (sel == UnwindPauseContinue) lcd.printAt(0, 3, " STOP  >CONT   MOD  ");
-      if (sel == UnwindPauseMod) lcd.printAt(0, 3, " STOP   CONT  >MOD  ");
+      if (sel == UnwindPauseStop) lcd.printAt(0, statusRow, ">STOP   CONT   MOD  ");
+      if (sel == UnwindPauseContinue) lcd.printAt(0, statusRow, " STOP  >CONT   MOD  ");
+      if (sel == UnwindPauseMod) lcd.printAt(0, statusRow, " STOP   CONT  >MOD  ");
     }
     if (encoder.click()) return sel;
     delay(5);
@@ -805,7 +806,7 @@ void UnwindWinding(const UnwindParams &w) {
   lcd.printAt(0, 0, "RAZMOTKA DONE");
   char buf[21]; snprintf(buf, 21, "VITKOV:%ld", (long)lastTurns);
   lcd.printAt(0, 1, buf);
-  lcd.printAt(0, 3, "PRESS BTN TO EXIT");
+  lcd.printAt(0, (lcd.nRows > 3) ? 3 : (lcd.nRows - 1), "PRESS BTN TO EXIT");
   WaitButton();
 }
 
