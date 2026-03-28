@@ -640,7 +640,7 @@ int32_t LoadUnwindTurns() {
   int p = EEPROM_UNWIND_ADDR + 1 + (int)sizeof(UnwindParams);
   int32_t turns = 0;
   EEPROM_load(p, turns);
-  return max<int32_t>(0, turns);
+  return (turns < 0) ? 0 : turns;
 }
 void DrawUnwindScreen(int32_t turns, int16_t rpm, int16_t stepVal, bool running) {
   char buf[21];
