@@ -43,7 +43,9 @@
 #define DISPLAY_ADDRESS     0x27
 
 #define STEPPER_Z_STEPS       200
-#define STEPPER_Z_MICROSTEPS  16
+// ВАЖНО: для драйвера намоточного вала (Z) выставлен режим 1/2 шага.
+// Ранее было 1/16, из-за чего реальная скорость была примерно в 8 раз ниже заданной.
+#define STEPPER_Z_MICROSTEPS  2
 #define STEPPER_Z_REVERSE     1
 #define STEPPER_A_STEPS       200
 #define STEPPER_A_MICROSTEPS  16
