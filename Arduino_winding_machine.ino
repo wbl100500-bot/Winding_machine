@@ -499,7 +499,7 @@ void unwindISR_A() {
   else
     unwindPos--;
 }
-#endif
+
 void setupUnwindEncoder() {
   pinMode(UNWIND_ENC_A, INPUT_PULLUP);
   pinMode(UNWIND_ENC_B, INPUT_PULLUP);
