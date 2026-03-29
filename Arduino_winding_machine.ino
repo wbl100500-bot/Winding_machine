@@ -488,6 +488,7 @@ double speedMult = 1;
 volatile int32_t unwindPos = 0;
 #define UNWIND_COUNTS_PER_REV ((int32_t)UNWIND_PPR * 2L)
 #ifdef UNWIND_ENC_A
+static bool unwindEncoderEnabled = false;
 // Только канал A на прерывании (пин 18 = INT5 на Mega).
 // Канал B читается внутри ISR только для определения направления.
 // ISR_B убран — при двух ISR на A и B они давали противоположные знаки и обнуляли счёт.
@@ -500,15 +501,30 @@ void unwindISR_A() {
 }
 #endif
 void setupUnwindEncoder() {
-#ifdef UNWIND_ENC_A
   pinMode(UNWIND_ENC_A, INPUT_PULLUP);
   pinMode(UNWIND_ENC_B, INPUT_PULLUP);
   #ifdef UNWIND_ENC_Z
   pinMode(UNWIND_ENC_Z, INPUT_PULLUP);
   #endif
-  attachInterrupt(digitalPinToInterrupt(UNWIND_ENC_A), unwindISR_A, CHANGE);
-#endif
+  detachInterrupt(digitalPinToInterrupt(UNWIND_ENC_A));
+  unwindEncoderEnabled = false;
 }
+
+void setUnwindEncoderEnabled(bool enabled) {
+  if (enabled == unwindEncoderEnabled)
+    return;
+
+  if (enabled)
+    attachInterrupt(digitalPinToInterrupt(UNWIND_ENC_A), unwindISR_A, CHANGE);
+  else
+    detachInterrupt(digitalPinToInterrupt(UNWIND_ENC_A));
+
+  unwindEncoderEnabled = enabled;
+}
+#else
+void setupUnwindEncoder() {}
+void setUnwindEncoderEnabled(bool) {}
+#endif
 
 ISR(TIMER1_COMPA_vect) {
   if (planner.tickManual())
@@ -528,6 +544,7 @@ void AutoWinding(const Winding &w, bool &direction)  // Подпрограмма
   Winding current;  // Текущий виток и слой при автонамотке
 
   DebugWrite("Start");
+  setUnwindEncoderEnabled(false);  // В режиме намотки энкодер размотки не используется.
 
   current.turns = 0;
   current.layers = 0;
@@ -555,6 +572,8 @@ void AutoWinding(const Winding &w, bool &direction)  // Подпрограмма
   planner.reset();
   initTimer();
 
+  int16_t shownTurns = -1;
+  uint8_t shownPlannerStatus = 255;
   while (1) {
     if (run && !planner.getStatus()) {
       DebugWrite("READY");
@@ -615,14 +634,22 @@ void AutoWinding(const Winding &w, bool &direction)  // Подпрограмма
     }
 
     static uint32_t tmr;
-    if (millis() - tmr >= 500) {
+    if (millis() - tmr >= 1000) {
       tmr = millis();
 
       int total_turns = (abs(shaftStepper.pos)) / STEPPER_Z_STEPS_COUNT;
+      int16_t turnInLayer = total_turns % w.turns + 1;
+      uint8_t plannerStatus = planner.getStatus();
 
-      screen.UpdateTurns(total_turns % w.turns + 1);
+      if (turnInLayer != shownTurns) {
+        screen.UpdateTurns(turnInLayer);
+        shownTurns = turnInLayer;
+      }
       DebugWrite("pos", shaftStepper.pos, layerStepper.pos);
-      screen.PlannerStatus(planner.getStatus());
+      if (plannerStatus != shownPlannerStatus) {
+        screen.PlannerStatus(plannerStatus);
+        shownPlannerStatus = plannerStatus;
+      }
     }
   }
 
@@ -690,6 +717,7 @@ uint8_t UnwindAskAction() {
 }
 
 void UnwindWinding(const UnwindParams &w) {
+  setUnwindEncoderEnabled(true);
   int32_t restoredTurns = LoadUnwindTurns();
   int32_t basePos = restoredTurns * UNWIND_COUNTS_PER_REV;
   noInterrupts(); unwindPos = basePos; interrupts();
@@ -802,6 +830,7 @@ void UnwindWinding(const UnwindParams &w) {
   int32_t pos; noInterrupts(); pos=unwindPos; interrupts();
   lastTurns = restoredTurns + abs(pos - basePos) / UNWIND_COUNTS_PER_REV;
   SaveUnwindTurns(lastTurns);
+  setUnwindEncoderEnabled(false);
   lcd.clear();
   lcd.printAt(0, 0, "RAZMOTKA DONE");
   char buf[21]; snprintf(buf, 21, "VITKOV:%ld", (long)lastTurns);
