@@ -65,6 +65,11 @@
 //#define DEBUG
 #define TRANSFORMER_COUNT   3
 
+// Калибровка фактической скорости намотки.
+// Было 2.0x (2/1), по результатам подстройки ставим 1.5x (3/2).
+#define WINDING_SPEED_CAL_NUM 3L
+#define WINDING_SPEED_CAL_DEN 2L
+
 // --- Энкодер разматываемой катушки (Mega пины 18/19/20) ---
 #define UNWIND_ENC_A        18
 #define UNWIND_ENC_B        19
