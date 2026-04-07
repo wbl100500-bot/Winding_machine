@@ -492,7 +492,31 @@ void KeyboardRead() {
 }
 
 
-double speedMult = 1;
+volatile uint16_t speedMult88 = 256;  // 8.8 fixed-point, 1.0 = 256
+static inline uint32_t applySpeedMult(uint32_t period, uint16_t mult88) {
+  return (period * mult88 + 128u) >> 8;
+}
+static inline uint16_t getSpeedMult88() {
+  noInterrupts();
+  uint16_t mult = speedMult88;
+  interrupts();
+  return mult;
+}
+static inline void setSpeedMult88(uint16_t mult88) {
+  noInterrupts();
+  speedMult88 = mult88;
+  interrupts();
+}
+static inline void setSpeedMultRatio(uint16_t baseSpeed, uint16_t currentSpeed) {
+  if (currentSpeed == 0) {
+    setSpeedMult88(256);
+    return;
+  }
+  uint32_t scaled = ((uint32_t)baseSpeed << 8) / currentSpeed;
+  if (scaled == 0) scaled = 1;
+  if (scaled > 65535u) scaled = 65535u;
+  setSpeedMult88((uint16_t)scaled);
+}
 #ifndef STEPPER_EN_Z
 #define STEPPER_EN_Z STEPPER_EN
 #endif
@@ -554,13 +578,13 @@ void setUnwindEncoderEnabled(bool) {}
 
 ISR(TIMER1_COMPA_vect) {
   if (planner.tickManual())
-    setPeriod(planner.getPeriod() * speedMult);
+    setPeriod(applySpeedMult(planner.getPeriod(), speedMult88));
   else
     stopTimer();
 }
 
 uint32_t getSpeed() {
-  uint32_t p = planner.getPeriod() * speedMult;
+  uint32_t p = applySpeedMult(planner.getPeriod(), getSpeedMult88());
   return (p == 0) ? 0 : (60000000ul / (STEPPER_Z_STEPS_COUNT * p));
 }
 
@@ -579,7 +603,7 @@ void AutoWinding(const Winding &w, bool &direction)  // Подпрограмма
   current.turns = 0;
   current.layers = 0;
   current.speed = w.speed;
-  speedMult = 1;
+  setSpeedMult88(256);
   current.dir = w.dir;
   current.step = w.step;
 
@@ -623,7 +647,7 @@ void AutoWinding(const Winding &w, bool &direction)  // Подпрограмма
       direction = !direction;
 
       startTimer();
-      setPeriod(planner.getPeriod() * speedMult);
+      setPeriod(applySpeedMult(planner.getPeriod(), getSpeedMult88()));
 
       screen.UpdateLayers(current.layers);
     }
@@ -646,7 +670,7 @@ void AutoWinding(const Winding &w, bool &direction)  // Подпрограмма
           interrupts();
           if (planner.getStatus()) {
             startTimer();
-            setPeriod(planner.getPeriod() * speedMult);
+            setPeriod(applySpeedMult(planner.getPeriod(), getSpeedMult88()));
           }
         }
       } else {
@@ -659,7 +683,7 @@ void AutoWinding(const Winding &w, bool &direction)  // Подпрограмма
     if (ManualEnc::turn()) {
       current.speed = constrain(current.speed + ManualEnc::dir() * SPEED_INC, SPEED_INC, SPEED_LIMIT);  // то меняем значение скорости
       //planner.setMaxSpeed(STEPPER_STEPS_COUNT * current.speed / 60L);
-      speedMult = double(w.speed) / double(current.speed);
+      setSpeedMultRatio(w.speed, current.speed);
       screen.UpdateSpeed(current.speed);
     }
 
@@ -752,7 +776,7 @@ void UnwindWinding(const UnwindParams &w) {
   int32_t basePos = restoredTurns * UNWIND_COUNTS_PER_REV;
   noInterrupts(); unwindPos = basePos; interrupts();
   int16_t curSpeed = constrain(w.speed, 30, UNWIND_MAX_RPM);
-  speedMult = (w.speed > 0) ? (double)w.speed / (double)curSpeed : 1.0;
+  setSpeedMultRatio(w.speed, curSpeed);
   lcd.clear();
   DrawUnwindScreen(restoredTurns, curSpeed, w.step, false);
   pedal.tick();
@@ -783,7 +807,7 @@ void UnwindWinding(const UnwindParams &w) {
       int32_t p[2] = { dShaft, dLayer*(direction?1:-1) };
       planner.setTarget(p, RELATIVE);
       direction = !direction;
-      startTimer(); setPeriod(planner.getPeriod()*speedMult);
+      startTimer(); setPeriod(applySpeedMult(planner.getPeriod(), getSpeedMult88()));
     }
 
     encoder.tick(); ManualEnc::tick(); pedal.tick();
@@ -793,7 +817,7 @@ void UnwindWinding(const UnwindParams &w) {
     if (run != oldRun) {
       if (run) {
         noInterrupts(); planner.resume(); interrupts();
-        if (planner.getStatus()) { startTimer(); setPeriod(planner.getPeriod()*speedMult); }
+        if (planner.getStatus()) { startTimer(); setPeriod(applySpeedMult(planner.getPeriod(), getSpeedMult88())); }
       } else { noInterrupts(); planner.stop(); interrupts(); }
       SaveUnwindTurns(lastTurns);  // фиксируем прогресс при паузе
       savedTurns = lastTurns;
@@ -803,7 +827,7 @@ void UnwindWinding(const UnwindParams &w) {
 
     if (ManualEnc::turn()) {
       curSpeed = constrain(curSpeed + ManualEnc::dir()*10, 30, UNWIND_MAX_RPM);
-      speedMult = (double)w.speed / (double)curSpeed;
+      setSpeedMultRatio(w.speed, curSpeed);
       needRedraw = true;
     }
 
@@ -821,7 +845,7 @@ void UnwindWinding(const UnwindParams &w) {
         run = (act == UnwindPauseContinue) ? wasRun : false;
         if (run) {
           noInterrupts(); planner.resume(); interrupts();
-          if (planner.getStatus()) { startTimer(); setPeriod(planner.getPeriod()*speedMult); }
+          if (planner.getStatus()) { startTimer(); setPeriod(applySpeedMult(planner.getPeriod(), getSpeedMult88())); }
         }
         DrawUnwindScreen(lastTurns, curSpeed, w.step, run);
         needRedraw = true;
