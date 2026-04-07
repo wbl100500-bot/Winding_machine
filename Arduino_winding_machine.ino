@@ -503,12 +503,18 @@ volatile int32_t unwindPos = 0;
 #define UNWIND_COUNTS_PER_REV ((int32_t)UNWIND_PPR * 2L)
 #ifdef UNWIND_ENC_A
 static bool unwindEncoderEnabled = false;
+static volatile uint8_t* unwindEncAReg = nullptr;
+static volatile uint8_t* unwindEncBReg = nullptr;
+static uint8_t unwindEncAMask = 0;
+static uint8_t unwindEncBMask = 0;
 // Только канал A на прерывании (пин 18 = INT5 на Mega).
 // Канал B читается внутри ISR только для определения направления.
 // ISR_B убран — при двух ISR на A и B они давали противоположные знаки и обнуляли счёт.
 // На CHANGE канала A получаем 2 импульса на период (x2), поэтому 1 оборот = UNWIND_PPR * 2.
 void unwindISR_A() {
-  if (digitalRead(UNWIND_ENC_A) == digitalRead(UNWIND_ENC_B))
+  bool a = unwindEncAReg && unwindEncAMask ? (*unwindEncAReg & unwindEncAMask) : digitalRead(UNWIND_ENC_A);
+  bool b = unwindEncBReg && unwindEncBMask ? (*unwindEncBReg & unwindEncBMask) : digitalRead(UNWIND_ENC_B);
+  if (a == b)
     unwindPos++;
   else
     unwindPos--;
@@ -517,6 +523,12 @@ void unwindISR_A() {
 void setupUnwindEncoder() {
   pinMode(UNWIND_ENC_A, INPUT_PULLUP);
   pinMode(UNWIND_ENC_B, INPUT_PULLUP);
+  unwindEncAMask = digitalPinToBitMask(UNWIND_ENC_A);
+  unwindEncBMask = digitalPinToBitMask(UNWIND_ENC_B);
+  uint8_t portA = digitalPinToPort(UNWIND_ENC_A);
+  uint8_t portB = digitalPinToPort(UNWIND_ENC_B);
+  unwindEncAReg = (portA == NOT_A_PIN) ? nullptr : portInputRegister(portA);
+  unwindEncBReg = (portB == NOT_A_PIN) ? nullptr : portInputRegister(portB);
   #ifdef UNWIND_ENC_Z
   pinMode(UNWIND_ENC_Z, INPUT_PULLUP);
   #endif
