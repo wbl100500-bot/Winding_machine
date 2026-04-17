@@ -65,11 +65,6 @@
 //#define DEBUG
 #define TRANSFORMER_COUNT   3
 
-// Калибровка фактической скорости намотки.
-// Если при заданных 60 RPM фактически вал даёт ~20 RPM, нужен коэффициент x3.
-// Увеличиваем предыдущие 1.5x (3/2) до 4.5x (9/2).
-#define WINDING_SPEED_CAL_NUM 9L
-#define WINDING_SPEED_CAL_DEN 2L
 
 // --- Энкодер разматываемой катушки (Mega пины 18/19/20) ---
 #define UNWIND_ENC_A        18

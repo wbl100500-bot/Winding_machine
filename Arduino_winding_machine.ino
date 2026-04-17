@@ -140,20 +140,7 @@ ManualBtn<BUTTON_STOP> pedal;
 #define PLANNER_SPEED_LIMIT 111000
 #endif
 
-#ifndef WINDING_SPEED_CAL_NUM
-#define WINDING_SPEED_CAL_NUM 2L
-#endif
-#ifndef WINDING_SPEED_CAL_DEN
-#define WINDING_SPEED_CAL_DEN 1L
-#endif
-#ifndef UNWIND_SPEED_CAL_NUM
-#define UNWIND_SPEED_CAL_NUM 1L
-#endif
-#ifndef UNWIND_SPEED_CAL_DEN
-#define UNWIND_SPEED_CAL_DEN 1L
-#endif
-
-#define SPEED_LIMIT (int32_t(PLANNER_SPEED_LIMIT) * 60L * WINDING_SPEED_CAL_DEN / (STEPPER_Z_STEPS_COUNT * WINDING_SPEED_CAL_NUM))
+#define SPEED_LIMIT (int32_t(PLANNER_SPEED_LIMIT) * 60L / STEPPER_Z_STEPS_COUNT)
 #define UNWIND_MAX_RPM 600
 #define SPEED_INC 10
 #define STEPPER_Z_MANUAL_SPEED 360
@@ -588,8 +575,8 @@ uint32_t getSpeed() {
   return (p == 0) ? 0 : (60000000ul / (STEPPER_Z_STEPS_COUNT * p));
 }
 
-int32_t RpmToShaftSpeed(int16_t rpm, int32_t calNum, int32_t calDen) {
-  return (int32_t)STEPPER_Z_STEPS_COUNT * rpm * calNum / (60L * calDen);
+int32_t RpmToShaftSpeed(int16_t rpm) {
+  return (int32_t)STEPPER_Z_STEPS_COUNT * rpm / 60L;
 }
 
 
@@ -616,7 +603,7 @@ void AutoWinding(const Winding &w, bool &direction)  // Подпрограмма
   layerStepper.enable();
 
   planner.setAcceleration(STEPPER_Z_STEPS_COUNT * settings.acceleration / 60L);
-  planner.setMaxSpeed(constrain(RpmToShaftSpeed(w.speed, WINDING_SPEED_CAL_NUM, WINDING_SPEED_CAL_DEN), 1L, (int32_t)PLANNER_SPEED_LIMIT));
+  planner.setMaxSpeed(constrain(RpmToShaftSpeed(w.speed), 1L, (int32_t)PLANNER_SPEED_LIMIT));
 
   const int8_t shaftDir = w.dir ? 1 : -1;
   int32_t dShaft = STEPPER_Z_STEPS_COUNT * w.turns * shaftDir;
@@ -783,9 +770,7 @@ void UnwindWinding(const UnwindParams &w) {
   bool run = pedal.pressing();
   shaftStepper.enable(); layerStepper.enable();
   planner.setAcceleration(STEPPER_Z_STEPS_COUNT * settings.acceleration / 60L);
-  planner.setMaxSpeed(constrain(
-    RpmToShaftSpeed(w.speed, UNWIND_SPEED_CAL_NUM, UNWIND_SPEED_CAL_DEN), 1L,
-    RpmToShaftSpeed(UNWIND_MAX_RPM, UNWIND_SPEED_CAL_NUM, UNWIND_SPEED_CAL_DEN)));
+  planner.setMaxSpeed(constrain(RpmToShaftSpeed(w.speed), 1L, RpmToShaftSpeed(UNWIND_MAX_RPM)));
   shaftStepper.reverse(STEPPER_Z_REVERSE ^ w.dir);
   layerStepper.reverse(STEPPER_A_REVERSE);
   bool direction = false;
